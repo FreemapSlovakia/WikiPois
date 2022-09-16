@@ -63,7 +63,7 @@ function osm2pgsql.process_relation(object)
 
   -- if admin area is represented by a node (is admin_centre and has same name) then for geometry use that node, but keep the area
   for _, member in ipairs(object.members) do
-    if member.role == 'admin_centre' and member.type == 'n' then -- TODO only if name equals; otherwise it may be a capital for a country
+    if member.role == 'admin_centre' and member.type == 'n' then
       local node = node_table[member.ref]
 
       if node and node.name and node.name == object.tags.name then

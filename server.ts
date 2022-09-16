@@ -43,8 +43,8 @@ async function serveHttp(conn: Deno.Conn) {
         ST_AsText(
           ST_Transform(
             ST_PointOnSurface(
-              ST_Intersection(
-                ST_Union(geom),
+              ST_ClipByBox2D(
+                coll,
                 (SELECT * FROM bbox)
               )
             ),
@@ -52,17 +52,28 @@ async function serveHttp(conn: Deno.Conn) {
           )
         ) AS point,
         NULL,
-        MIN(type || id) AS id,
-        MAX(COALESCE(name, ''))
-      FROM wiki
+        id,
+        name
+      FROM (
+        SELECT
+          wikipedia,
+          wikidata,
+          ST_Collect(geom) AS coll,
+          MIN(type || id) AS id,
+          MAX(COALESCE(name, '')) AS name,
+          SUM(area) AS sarea,
+          SUM(ST_Length(geom)) AS slen
+        FROM
+          wiki
+        WHERE
+          geom && (SELECT * FROM bbox) AND
+          area < ST_Area((SELECT * FROM bbox))
+        GROUP BY wikipedia, wikidata
+      ) foo
       WHERE
-        geom && (SELECT * FROM bbox) AND
-        area < ST_Area((SELECT * FROM bbox))
-      GROUP BY wikipedia, wikidata
-      HAVING
         ST_Area((SELECT * FROM bbox)) < 200000000 OR
-        SUM(area) > ST_Area((SELECT * FROM bbox)) / 200 OR
-        ST_Length(ST_Union(geom)) > sqrt(ST_Area((SELECT * FROM bbox)))
+        sarea > ST_Area((SELECT * FROM bbox)) / 200 OR
+        slen > sqrt(ST_Area((SELECT * FROM bbox)))
       LIMIT 1000
     `;
 
