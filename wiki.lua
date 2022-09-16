@@ -40,7 +40,7 @@ function osm2pgsql.process_way(object)
       wikipedia = object.tags.wikipedia,
       wikidata = object.tags.wikidata,
       name = object.tags.name,
-      geom = object:as_polygon():simplify(0.0001),
+      geom = object:as_polygon(),
       area = 0
     })
   else
