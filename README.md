@@ -2,6 +2,23 @@
 
 WikiPois is a server to provide Wikipedia POIs on the map.
 
+## API
+
+HTTP Request:
+
+```http
+GET /?bbox=<minX>,<minY>,<maxX>,<maxY>&scale=<scale>
+```
+
+HTTP Response:
+```
+[
+  [wikipedia, wikidata, lng, lat, id, name],
+  ...
+]
+```
+
+
 ## Prepare data
 
 Create database:

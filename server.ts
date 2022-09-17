@@ -23,13 +23,15 @@ async function serveHttp(conn: Deno.Conn) {
   const httpConn = Deno.serveHttp(conn);
 
   for await (const requestEvent of httpConn) {
-    const bbox = (
-      new URL(requestEvent.request.url).searchParams.get("bbox") ?? ""
-    )
+    const { searchParams } = new URL(requestEvent.request.url);
+
+    const bbox = (searchParams.get("bbox") ?? "")
       .split(",")
       .map((a) => Number(a));
 
-    if (bbox.length != 4 || bbox.some((a) => isNaN(a))) {
+    const scale = Number(searchParams.get("scale"));
+
+    if (bbox.length != 4 || bbox.some((a) => isNaN(a)) || !scale) {
       requestEvent.respondWith(new Response(null, { status: 400 }));
 
       continue;
@@ -71,9 +73,9 @@ async function serveHttp(conn: Deno.Conn) {
         GROUP BY wikipedia, wikidata
       ) foo
       WHERE
-        ST_Area((SELECT * FROM bbox)) < 200000000 OR
-        sarea > ST_Area((SELECT * FROM bbox)) / 200 OR
-        slen > sqrt(ST_Area((SELECT * FROM bbox)))
+        ${scale} < 100.0 OR
+        sarea > ${scale} * 10000.0 OR
+        slen > sqrt(${scale}) * 1000.0
       LIMIT 1000
     `;
 
@@ -87,13 +89,16 @@ async function serveHttp(conn: Deno.Conn) {
     }
 
     requestEvent.respondWith(
-      new Response(JSON.stringify(res.rows.filter(row => row[2] !== 'POINT EMPTY')), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      })
+      new Response(
+        JSON.stringify(res.rows.filter((row) => row[2] !== "POINT EMPTY")),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      )
     );
   }
 }
