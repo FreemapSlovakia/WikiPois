@@ -74,8 +74,10 @@ async function serveHttp(conn: Deno.Conn) {
       ) foo
       WHERE
         ${scale} < 100.0 OR
-        sarea > ${scale} * 10000.0 OR
+        sarea > ${scale} * 50000.0 OR
         slen > sqrt(${scale}) * 1000.0
+      ORDER BY
+        id DESC
       LIMIT 1000
     `;
 
