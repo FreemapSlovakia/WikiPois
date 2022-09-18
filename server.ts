@@ -36,9 +36,15 @@ await client.queryArray('CREATE INDEX IF NOT EXISTS wiki_mv_slen_idx ON wiki_mv(
 
 const server = Deno.listen({ port: 8040 });
 
-for await (const conn of server) {
+for (;;) {
   try {
-    serveHttp(conn);
+    for await (const conn of server) {
+      try {
+        serveHttp(conn);
+      } catch (e) {
+        console.error(e);
+      }
+    }
   } catch (e) {
     console.error(e);
   }
