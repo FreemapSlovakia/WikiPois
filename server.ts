@@ -47,11 +47,9 @@ for (;;) {
     for await (const conn of server) {
       console.log("Connection opened.");
 
-      try {
-        await serveHttp(conn);
-      } catch (e) {
-        console.error(e);
-      }
+      serveHttp(conn).then((err) => {
+        console.error(err);
+      });
 
       console.log("Connection closed.");
     }
