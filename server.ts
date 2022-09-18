@@ -49,9 +49,9 @@ for (;;) {
 
       serveHttp(conn).then((err) => {
         console.error(err);
-      });
 
-      console.log("Connection closed.");
+        console.log("Connection closed.");
+      });
     }
   } catch (e) {
     console.error(e);
