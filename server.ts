@@ -48,7 +48,7 @@ for (;;) {
       console.log("Connection opened.");
 
       try {
-        serveHttp(conn);
+        await serveHttp(conn);
       } catch (e) {
         console.error(e);
       }
