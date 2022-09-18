@@ -13,12 +13,12 @@ const client = new Client({
 
 await client.connect();
 
-client.queryArray`
+await client.queryArray`
   CREATE MATERIALIZED VIEW IF NOT EXISTS wiki_mv AS
   SELECT
     wikipedia,
     wikidata,
-    ST_Collect(geom) AS coll,
+    ST_Collect(ST_SimplifyPreserveTopology(geom, 10)) AS coll,
     MIN(type || id) AS id,
     MAX(COALESCE(name, '')) AS name,
     SUM(area) AS sarea,
@@ -27,6 +27,12 @@ client.queryArray`
     wiki
   GROUP BY wikipedia, wikidata
 `;
+
+await client.queryArray('CREATE INDEX IF NOT EXISTS wiki_mv_geom_idx ON wiki_mv using gist(coll)');
+
+await client.queryArray('CREATE INDEX IF NOT EXISTS wiki_mv_sarea_idx ON wiki_mv(sarea)');
+
+await client.queryArray('CREATE INDEX IF NOT EXISTS wiki_mv_slen_idx ON wiki_mv(slen)');
 
 const server = Deno.listen({ port: 8040 });
 
