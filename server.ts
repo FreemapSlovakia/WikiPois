@@ -28,18 +28,24 @@ await client.queryArray`
   GROUP BY wikipedia, wikidata
 `;
 
-await client.queryArray('CREATE INDEX IF NOT EXISTS wiki_mv_geom_idx ON wiki_mv using gist(coll)');
+await client.queryArray(
+  "CREATE INDEX IF NOT EXISTS wiki_mv_geom_idx ON wiki_mv using gist(coll)"
+);
 
-await client.queryArray('CREATE INDEX IF NOT EXISTS wiki_mv_sarea_idx ON wiki_mv(sarea)');
+await client.queryArray(
+  "CREATE INDEX IF NOT EXISTS wiki_mv_sarea_idx ON wiki_mv(sarea)"
+);
 
-await client.queryArray('CREATE INDEX IF NOT EXISTS wiki_mv_slen_idx ON wiki_mv(slen)');
+await client.queryArray(
+  "CREATE INDEX IF NOT EXISTS wiki_mv_slen_idx ON wiki_mv(slen)"
+);
 
 const server = Deno.listen({ port: 8040 });
 
 for (;;) {
   try {
     for await (const conn of server) {
-      console.log('Connection opened.');
+      console.log("Connection opened.");
 
       try {
         serveHttp(conn);
@@ -47,7 +53,7 @@ for (;;) {
         console.error(e);
       }
 
-      console.log('Connection closed.');
+      console.log("Connection closed.");
     }
   } catch (e) {
     console.error(e);
@@ -58,7 +64,7 @@ async function serveHttp(conn: Deno.Conn) {
   const httpConn = Deno.serveHttp(conn);
 
   for await (const requestEvent of httpConn) {
-    console.log('Request: ' + requestEvent.request.url);
+    console.log("Request: " + requestEvent.request.url);
 
     try {
       await handleRequestEvent(requestEvent);
