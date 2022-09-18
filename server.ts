@@ -13,6 +13,21 @@ const client = new Client({
 
 await client.connect();
 
+client.queryArray`
+  CREATE MATERIALIZED VIEW IF NOT EXISTS wiki_mv AS
+  SELECT
+    wikipedia,
+    wikidata,
+    ST_Collect(geom) AS coll,
+    MIN(type || id) AS id,
+    MAX(COALESCE(name, '')) AS name,
+    SUM(area) AS sarea,
+    SUM(ST_Length(geom)) AS slen
+  FROM
+    wiki
+  GROUP BY wikipedia, wikidata
+`;
+
 const server = Deno.listen({ port: 8040 });
 
 for await (const conn of server) {
@@ -71,26 +86,16 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
       NULL,
       id,
       name
-    FROM (
-      SELECT
-        wikipedia,
-        wikidata,
-        ST_Collect(geom) AS coll,
-        MIN(type || id) AS id,
-        MAX(COALESCE(name, '')) AS name,
-        SUM(area) AS sarea,
-        SUM(ST_Length(geom)) AS slen
-      FROM
-        wiki
-      WHERE
-        geom && (SELECT * FROM bbox) AND
-        area < ST_Area((SELECT * FROM bbox))
-      GROUP BY wikipedia, wikidata
-    ) foo
+    FROM
+      wiki_mv
     WHERE
-      ${scale} < 100.0 OR
-      sarea > ${scale} * 50000.0 OR
-      slen > sqrt(${scale}) * 1000.0
+      coll && (SELECT * FROM bbox) AND
+      sarea < ST_Area((SELECT * FROM bbox)) AND
+      (
+        ${scale} < 100.0 OR
+        sarea > ${scale} * 50000.0 OR
+        slen > sqrt(${scale}) * 1000.0
+      )
     ORDER BY
       id DESC
     LIMIT 1000
