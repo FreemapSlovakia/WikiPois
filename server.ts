@@ -39,11 +39,15 @@ const server = Deno.listen({ port: 8040 });
 for (;;) {
   try {
     for await (const conn of server) {
+      console.log('Connection opened.');
+
       try {
         serveHttp(conn);
       } catch (e) {
         console.error(e);
       }
+
+      console.log('Connection closed.');
     }
   } catch (e) {
     console.error(e);
@@ -54,6 +58,8 @@ async function serveHttp(conn: Deno.Conn) {
   const httpConn = Deno.serveHttp(conn);
 
   for await (const requestEvent of httpConn) {
+    console.log('Request: ' + requestEvent.request.url);
+
     try {
       await handleRequestEvent(requestEvent);
     } catch (e) {
