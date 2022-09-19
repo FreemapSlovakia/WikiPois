@@ -94,7 +94,7 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
   }
 
   const res = await client.queryArray`
-    WITH bbox AS (SELECT ST_Transform(ST_MakeEnvelope(${bbox[0]}, ${bbox[1]}, ${bbox[2]}, ${bbox[3]}, 4326), 3857))
+    WITH bbox AS (SELECT ST_Transform(ST_MakeEnvelope(${bbox[0]}, ${bbox[1]}, ${bbox[2]}, ${bbox[3]}, 4326), 3857) AS geom)
     SELECT
       wikipedia,
       wikidata,
@@ -103,7 +103,7 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
           ST_PointOnSurface(
             ST_ClipByBox2D(
               coll,
-              (SELECT * FROM bbox)
+              bbox.geom
             )
           ),
           4326
@@ -115,8 +115,8 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
     FROM
       wiki_mv
     WHERE
-      coll && (SELECT * FROM bbox) AND
-      sarea < ST_Area((SELECT * FROM bbox)) AND
+      coll && bbox.geom AND
+      sarea < ST_Area(bbox.geom) AND
       (
         ${scale} < 100.0 OR
         sarea > ${scale} * 50000.0 OR
