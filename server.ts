@@ -73,7 +73,9 @@ async function serveHttp(conn: Deno.Conn) {
     } catch (e) {
       console.error(e);
 
-      requestEvent.respondWith(new Response(null, { status: 500 }));
+      if (e.message !== "connection closed before message completed") {
+        await requestEvent.respondWith(new Response(null, { status: 500 }));
+      }
     }
   }
 }
@@ -88,7 +90,7 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
   const scale = Number(searchParams.get("scale"));
 
   if (bbox.length != 4 || bbox.some((a) => isNaN(a)) || !scale) {
-    requestEvent.respondWith(new Response(null, { status: 400 }));
+    await requestEvent.respondWith(new Response(null, { status: 400 }));
 
     return;
   }
@@ -103,7 +105,7 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
           ST_PointOnSurface(
             ST_ClipByBox2D(
               coll,
-              bbox.geom
+              (SELECT geom FROM bbox)
             )
           ),
           4326
@@ -115,8 +117,8 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
     FROM
       wiki_mv
     WHERE
-      coll && bbox.geom AND
-      sarea < ST_Area(bbox.geom) AND
+      coll && (SELECT geom FROM bbox) AND
+      sarea < ST_Area((SELECT geom FROM bbox)) AND
       (
         ${scale} < 100.0 OR
         sarea > ${scale} * 50000.0 OR
@@ -136,7 +138,7 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
     }
   }
 
-  requestEvent.respondWith(
+  await requestEvent.respondWith(
     new Response(
       JSON.stringify(res.rows.filter((row) => row[2] !== "POINT EMPTY")),
       {
