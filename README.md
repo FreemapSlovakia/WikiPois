@@ -10,6 +10,8 @@ HTTP Request:
 GET /?bbox=<minX>,<minY>,<maxX>,<maxY>&scale=<scale>
 ```
 
+Parameter `scale` is roughly computed as area of bounding box divided by number of pixels (`const scale = turf.area(turf.bboxPolygon(bbox))  / (window.innerHeight * window.innerWidth);`).
+
 HTTP Response:
 ```json
 [
@@ -18,8 +20,7 @@ HTTP Response:
 ]
 ```
 
-
-## Prepare data
+## Database preparation
 
 Create database:
 
@@ -53,4 +54,10 @@ Running server:
 
 ```bash
 deno run --allow-net --allow-env server.ts
+```
+
+## Updating database
+
+```crontab
+1 4   * * * /path/to/update.sh
 ```
