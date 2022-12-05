@@ -44,12 +44,6 @@ Preparation for updates:
 PGPASSWORD=wiki osm2pgsql-replication init -d wiki -U wiki -H localhost --osm-file planet.osm.pbf
 ```
 
-Updating data (run daily for Geofabrik):
-
-```bash
-PGPASSWORD=wiki osm2pgsql-replication update -d wiki -U wiki -H localhost -- -a -s --flat-nodes flat_nodes --cache 0 -O flex -S wiki.lua
-```
-
 Running server:
 
 ```bash
@@ -58,6 +52,8 @@ deno run --allow-net --allow-env server.ts
 
 ## Updating database
 
+Run daily for Geofabrik extracts.
+
 ```crontab
-1 4   * * * /path/to/update.sh
+1 4 * * * /path/to/update.sh
 ```
