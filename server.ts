@@ -42,7 +42,7 @@ await client.queryArray(
 
 client.release();
 
-Deno.serve({ port: 8040 }, async (request) => {
+Deno.serve({ hostname: "127.0.0.1", port: 8040 }, async (request) => {
   console.log("Request: " + request.url);
 
   try {
