@@ -1,5 +1,4 @@
-import { Pool } from "https://deno.land/x/postgres@v0.16.1/mod.ts";
-import { QueryArrayResult } from "https://deno.land/x/postgres@v0.16.1/query/query.ts";
+import { Pool, type QueryArrayResult } from "@db/postgres";
 
 const dbPool = new Pool(
   {
@@ -9,7 +8,7 @@ const dbPool = new Pool(
     password: "wiki",
     port: 5432,
   },
-  5
+  5,
 );
 
 const client = await dbPool.connect();
@@ -30,61 +29,32 @@ await client.queryArray`
 `;
 
 await client.queryArray(
-  "CREATE INDEX IF NOT EXISTS wiki_mv_geom_idx ON wiki_mv using gist(coll)"
+  "CREATE INDEX IF NOT EXISTS wiki_mv_geom_idx ON wiki_mv using gist(coll)",
 );
 
 await client.queryArray(
-  "CREATE INDEX IF NOT EXISTS wiki_mv_sarea_idx ON wiki_mv(sarea)"
+  "CREATE INDEX IF NOT EXISTS wiki_mv_sarea_idx ON wiki_mv(sarea)",
 );
 
 await client.queryArray(
-  "CREATE INDEX IF NOT EXISTS wiki_mv_slen_idx ON wiki_mv(slen)"
+  "CREATE INDEX IF NOT EXISTS wiki_mv_slen_idx ON wiki_mv(slen)",
 );
 
 client.release();
 
-const server = Deno.listen({ port: 8040 });
+Deno.serve({ port: 8040 }, async (request) => {
+  console.log("Request: " + request.url);
 
-for (;;) {
   try {
-    for await (const conn of server) {
-      console.log("Connection opened.");
-
-      serveHttp(conn)
-        .catch((err) => {
-          if (err) {
-            console.error(err);
-          }
-        })
-        .finally(() => {
-          console.log("Connection closed.");
-        });
-    }
+    return await handleRequest(request);
   } catch (e) {
     console.error(e);
+    return new Response(null, { status: 500 });
   }
-}
+});
 
-async function serveHttp(conn: Deno.Conn) {
-  const httpConn = Deno.serveHttp(conn);
-
-  for await (const requestEvent of httpConn) {
-    console.log("Request: " + requestEvent.request.url);
-
-    try {
-      await handleRequestEvent(requestEvent);
-    } catch (e) {
-      console.error(e);
-
-      if (e.message !== "connection closed before message completed") {
-        await requestEvent.respondWith(new Response(null, { status: 500 }));
-      }
-    }
-  }
-}
-
-async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
-  const { searchParams } = new URL(requestEvent.request.url);
+async function handleRequest(request: Request): Promise<Response> {
+  const { searchParams } = new URL(request.url);
 
   const bbox = (searchParams.get("bbox") ?? "")
     .split(",")
@@ -93,14 +63,12 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
   const scale = Number(searchParams.get("scale"));
 
   if (bbox.length != 4 || bbox.some((a) => isNaN(a)) || !scale) {
-    await requestEvent.respondWith(new Response(null, { status: 400 }));
-
-    return;
+    return new Response(null, { status: 400 });
   }
 
   const client = await dbPool.connect();
 
-  let res: QueryArrayResult<unknown []>;
+  let res: QueryArrayResult<unknown[]>;
 
   try {
     res = await client.queryArray`
@@ -149,16 +117,14 @@ async function handleRequestEvent(requestEvent: Deno.RequestEvent) {
     }
   }
 
-  await requestEvent.respondWith(
-    new Response(
-      JSON.stringify(res.rows.filter((row) => row[2] !== "POINT EMPTY")),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      }
-    )
+  return new Response(
+    JSON.stringify(res.rows.filter((row) => row[2] !== "POINT EMPTY")),
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    },
   );
 }
