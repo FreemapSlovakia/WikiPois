@@ -7,6 +7,7 @@ const dbPool = new Pool(
     hostname: "localhost",
     password: "wiki",
     port: 5432,
+    tls: { enabled: false },
   },
   5,
 );
