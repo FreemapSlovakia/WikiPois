@@ -56,7 +56,7 @@ trap 'rm -f "$log"' EXIT
 start=$(date +%s)
 
 {
-  osm2pgsql-replication update -d wiki -U wiki -H localhost -- -a -s --flat-nodes /fm/data4/martin/wiki-pois-flat-nodes --cache 0 -O flex -S wiki.lua \
+  osm2pgsql-replication update -d wiki -U wiki -H localhost -- -a -s --flat-nodes /fm/data4/martin/wikipois-flat-nodes --cache 0 -O flex -S wiki.lua \
     && psql -U wiki -h localhost wiki -v ON_ERROR_STOP=1 -c "REFRESH MATERIALIZED VIEW CONCURRENTLY wiki_mv;"
 } 2>&1 | tee "$log"
 rc=$?

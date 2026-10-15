@@ -44,11 +44,13 @@ Create the materialized view the server reads:
 PGPASSWORD=wiki psql -U wiki -h localhost wiki -f schema.sql
 ```
 
-Preparation for updates (daily diffs, matching the daily schedule below):
+Preparation for updates, with daily diffs to match the daily schedule below. Freemap imports the Geofabrik Europe extract:
 
 ```bash
-PGPASSWORD=wiki osm2pgsql-replication init -d wiki -U wiki -H localhost --osm-file planet.osm.pbf --server https://planet.openstreetmap.org/replication/day
+PGPASSWORD=wiki osm2pgsql-replication init -d wiki -U wiki -H localhost --osm-file europe.osm.pbf --server https://download.geofabrik.de/europe-updates
 ```
+
+For the planet, use `--server https://planet.openstreetmap.org/replication/day`.
 
 Running server:
 
