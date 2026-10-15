@@ -1,111 +1,105 @@
-local wiki_table = osm2pgsql.define_table({
+-- Geometries are in web mercator (the osm2pgsql default); schema.sql computes
+-- areas and lengths from them.
+
+local wiki = osm2pgsql.define_table({
   name = 'wiki',
   ids = { type = 'any', id_column = 'id', type_column = 'type' },
   columns = {
     { column = 'wikipedia', type = 'text' },
     { column = 'wikidata', type = 'text' },
-    { column = 'area', type = 'real', not_null = true },
     { column = 'name', type = 'text' },
-    { column = 'geom', type = 'geometry', not_null = true }
-  }
+    { column = 'admin_centre', type = 'int8' },
+    -- Null when a relation's geometry can't be built; it may still have an
+    -- admin_centre to show it at.
+    { column = 'geom', type = 'geometry' },
+  },
 })
 
-local node_table = {};
+-- Lets schema.sql show a boundary at its admin_centre node. Resolved in SQL
+-- because during updates the node is rarely in the same diff as the relation.
+local places = osm2pgsql.define_table({
+  name = 'places',
+  ids = { type = 'node', id_column = 'id' },
+  columns = {
+    { column = 'name', type = 'text', not_null = true },
+    { column = 'geom', type = 'point', not_null = true },
+  },
+})
 
-function osm2pgsql.process_node(object)
-  if object.tags.place then
-    node_table[object.id] = { point = object:as_point(), name = object.tags.name }
-  end
+local multiline_types = {
+  waterway = true,
+  route = true,
+  superroute = true,
+  route_master = true,
+  network = true,
+}
 
-  if not(object.tags.wikipedia or object.tags.wikidata) then
-    return
-  end
+local function has_wiki(tags)
+  return tags.wikipedia or tags.wikidata
+end
 
-  wiki_table:insert({
+local function insert(object, geom, admin_centre)
+  wiki:insert({
     wikipedia = object.tags.wikipedia,
     wikidata = object.tags.wikidata,
     name = object.tags.name,
-    geom = object:as_point(),
-    area = 0
+    admin_centre = admin_centre,
+    geom = geom,
   })
 end
 
-function osm2pgsql.process_way(object)
-  if not(object.tags.wikipedia or object.tags.wikidata) then
-    return
+function osm2pgsql.process_node(object)
+  local tags = object.tags
+
+  if tags.place and tags.name then
+    places:insert({ name = tags.name, geom = object:as_point() })
   end
 
-  if object.is_closed and object.tags.area ~= 'no' and not ((object.tags.highway or object.tags.barrier) and object.tags.area ~= 'yes') then
-    wiki_table:insert({
-      wikipedia = object.tags.wikipedia,
-      wikidata = object.tags.wikidata,
-      name = object.tags.name,
-      geom = object:as_polygon(),
-      area = 0
-    })
-  else
-    wiki_table:insert({
-      wikipedia = object.tags.wikipedia,
-      wikidata = object.tags.wikidata,
-      name = object.tags.name,
-      geom = object:as_linestring(),
-      area = 0
-    })
+  if has_wiki(tags) then
+    insert(object, object:as_point())
   end
 end
 
-function osm2pgsql.process_relation(object)
-  if (not(object.tags.wikipedia or object.tags.wikidata)) then
+function osm2pgsql.process_way(object)
+  local tags = object.tags
+
+  if not has_wiki(tags) then
     return
   end
 
-  local type = object.tags.type;
+  local is_area = object.is_closed
+    and tags.area ~= 'no'
+    and (tags.area == 'yes' or not (tags.highway or tags.barrier))
 
-  -- if admin area is represented by a node (is admin_centre and has same name) then for geometry use that node, but keep the area
+  insert(object, is_area and object:as_polygon() or object:as_linestring())
+end
+
+function osm2pgsql.process_relation(object)
+  local tags = object.tags
+
+  if not has_wiki(tags) then
+    return
+  end
+
+  local admin_centre
+
   for _, member in ipairs(object.members) do
     if member.role == 'admin_centre' and member.type == 'n' then
-      local node = node_table[member.ref]
-
-      if node and node.name and node.name == object.tags.name then
-        wiki_table:insert({
-          wikipedia = object.tags.wikipedia,
-          wikidata = object.tags.wikidata,
-          name = object.tags.name,
-          geom = node.point,
-          area = (type == 'multipolygon' or type == 'boundary') and object:as_multipolygon():transform(3857):area() or 0
-        })
-
-        return
-      end
+      admin_centre = member.ref
+      break
     end
   end
 
-  if type == 'multipolygon' or type == 'boundary' then
-    wiki_table:insert({
-      wikipedia = object.tags.wikipedia,
-      wikidata = object.tags.wikidata,
-      name = object.tags.name,
-      geom = object:as_multipolygon(),
-      area = object:as_multipolygon():transform(3857):area()
-    })
-  elseif type == 'waterway' or type == 'route' or type == 'superroute' or type == 'route_master' or type == 'network' then
-    wiki_table:insert({
-      wikipedia = object.tags.wikipedia,
-      wikidata = object.tags.wikidata,
-      name = object.tags.name,
-      geom = object:as_multilinestring(),
-      area = 0
-    })
-  else
-    -- print(object.tags.type or "??")
-    -- associatedStreet, bridge, group, region, site, treaty
+  local geom
 
-    wiki_table:insert({
-      wikipedia = object.tags.wikipedia,
-      wikidata = object.tags.wikidata,
-      name = object.tags.name,
-      geom = object:as_geometrycollection(),
-      area = 0
-    })
+  if tags.type == 'multipolygon' or tags.type == 'boundary' then
+    geom = object:as_multipolygon()
+  elseif multiline_types[tags.type] then
+    geom = object:as_multilinestring()
+  else
+    -- associatedStreet, bridge, group, region, site, treaty, …
+    geom = object:as_geometrycollection()
   end
+
+  insert(object, geom, admin_centre)
 end

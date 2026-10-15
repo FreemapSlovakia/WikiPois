@@ -1,0 +1,15 @@
+[Unit]
+Description=WikiPois database update
+After=network-online.target postgresql.service
+Wants=network-online.target
+# update.sh mails its own results; this covers deaths it can't report (OOM, SIGKILL).
+OnFailure=wikipois-update-abort.service
+
+[Service]
+Type=oneshot
+User=martin
+WorkingDirectory=/home/martin/WikiPois
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+ExecStart=/home/martin/WikiPois/update.sh

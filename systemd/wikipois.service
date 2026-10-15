@@ -1,0 +1,15 @@
+[Unit]
+Description=WikiPois Deno Server
+After=network.target
+Requires=postgresql.service
+After=postgresql.service
+
+[Service]
+WorkingDirectory=/home/martin/WikiPois
+ExecStart=/home/martin/.deno/bin/deno task start
+Restart=always
+RestartSec=5
+User=martin
+
+[Install]
+WantedBy=multi-user.target

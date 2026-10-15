@@ -1,0 +1,8 @@
+[Unit]
+Description=WikiPois update abort notification
+
+[Service]
+Type=oneshot
+User=martin
+WorkingDirectory=/home/martin/WikiPois
+ExecStart=/home/martin/WikiPois/update.sh --abrupt
