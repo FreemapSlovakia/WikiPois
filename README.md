@@ -47,10 +47,10 @@ PGPASSWORD=wiki psql -U wiki -h localhost wiki -f schema.sql
 Preparation for updates, with daily diffs to match the daily schedule below. Freemap imports the Geofabrik Europe extract:
 
 ```bash
-PGPASSWORD=wiki osm2pgsql-replication init -d wiki -U wiki -H localhost --osm-file europe.osm.pbf --server https://download.geofabrik.de/europe-updates
+PGPASSWORD=wiki osm2pgsql-replication init -d wiki -U wiki -H localhost --osm-file europe.osm.pbf
 ```
 
-For the planet, use `--server https://planet.openstreetmap.org/replication/day`.
+The update URL is read from the Geofabrik file's header. For the planet, init with `--server https://planet.openstreetmap.org/replication/day` instead of `--osm-file`.
 
 Running server:
 
